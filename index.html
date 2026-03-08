@@ -80,7 +80,7 @@ header {
 
 /* Logo image — 550x107 source, rendered at proportional height for header */
 .logo-img {
-  height: 34px;           /* header is 66px; 34px keeps comfortable padding */
+  height: 44px;           /* header is 66px; 44px keeps comfortable padding */
   width: auto;            /* preserves 550:107 aspect → ~175px wide */
   display: block;
   /* Slight brightness boost so it reads well on dark bg without a white box */
@@ -135,6 +135,83 @@ header {
 .result-count {
   font-family: 'Space Mono', monospace; font-size: 11px;
   color: var(--muted); white-space: nowrap;
+}
+
+/* ================================================================
+   FEATURED RESOURCE BANNER
+================================================================ */
+.featured-banner {
+  display: flex; align-items: center; gap: 20px;
+  background: linear-gradient(135deg, rgba(245,179,1,0.10) 0%, rgba(245,179,1,0.04) 60%, rgba(11,30,53,0.90) 100%);
+  border: 1px solid rgba(245,179,1,0.35);
+  border-radius: var(--radius);
+  padding: 20px 26px;
+  margin-bottom: 32px;
+  text-decoration: none; color: inherit;
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+  backdrop-filter: blur(12px);
+}
+.featured-banner::before {
+  /* Subtle glow sweep on the left edge */
+  content: '';
+  position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, var(--gold), rgba(245,179,1,0.3));
+  border-radius: 3px 0 0 3px;
+}
+.featured-banner:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245,179,1,0.60);
+  box-shadow: 0 10px 36px rgba(0,0,0,0.30), 0 0 0 1px rgba(245,179,1,0.12);
+}
+.featured-banner::after {
+  content: "\2197";
+  position: absolute; top: 18px; right: 20px;
+  font-size: 16px; color: var(--gold);
+  opacity: 0; transform: translate(3px,-3px);
+  transition: opacity .15s, transform .15s;
+  pointer-events: none;
+}
+.featured-banner:hover::after { opacity: .8; transform: translate(0,0); }
+
+.featured-icon {
+  width: 52px; height: 52px; flex-shrink: 0;
+  background: rgba(245,179,1,0.12);
+  border: 1px solid rgba(245,179,1,0.30);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 24px;
+}
+
+.featured-body { flex: 1; min-width: 0; }
+
+.featured-eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: 1.4px;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.featured-title {
+  font-size: 17px; font-weight: 800; color: var(--text);
+  margin-bottom: 5px; line-height: 1.2;
+}
+
+.featured-desc {
+  font-size: 13px; color: #8fafc8; line-height: 1.5;
+}
+
+.featured-badge {
+  flex-shrink: 0;
+  background: rgba(245,179,1,0.14); border: 1px solid rgba(245,179,1,0.35);
+  color: var(--gold); font-family: 'Space Mono', monospace;
+  font-size: 10.5px; font-weight: 700;
+  padding: 6px 14px; border-radius: 99px; letter-spacing: .4px;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  .featured-banner { flex-wrap: wrap; }
+  .featured-badge { display: none; }
 }
 
 /* ================================================================
@@ -421,6 +498,19 @@ header {
   <div class="filter-label">Filter by keyword</div>
   <div class="filter-bar" id="filterBar"></div>
 
+  <!-- EVV Guides featured banner -->
+  <a class="featured-banner"
+     href="https://drive.google.com/drive/u/0/folders/1nbiayyWLJ_ghpYQW8HM2dl-MOrExf1iy"
+     target="_blank" rel="noopener noreferrer">
+    <div class="featured-icon" id="featuredIcon"></div>
+    <div class="featured-body">
+      <div class="featured-eyebrow">Quick Reference Library</div>
+      <div class="featured-title">EVV Guides</div>
+      <div class="featured-desc">Step-by-step guides for using Therap and resolving common EVV issues. Open the folder to browse all reference documents.</div>
+    </div>
+    <div class="featured-badge">Open Folder</div>
+  </a>
+
   <!-- Recently visited -->
   <div id="recentSection" style="display:none;">
     <div class="filter-label" style="margin-bottom:10px;">Recently visited</div>
@@ -611,6 +701,9 @@ document.addEventListener('DOMContentLoaded', function() {
   buildFilterBar();
   buildLegend();
   buildRecentStrip();
+  /* Set featured banner icon safely via JS */
+  var fi = document.getElementById('featuredIcon');
+  if (fi) fi.textContent = '\uD83D\uDCC2'; /* open file folder */
   render();
 
   /* Search input */
@@ -975,4 +1068,3 @@ function escHtml(str) {
 </script>
 </body>
 </html>
-
