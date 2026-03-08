@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Therap Navigator &mdash; TIS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* ================================================================
+   TOKENS
+================================================================ */
+:root {
+  --bg:      #07131f;
+  --navy:    #0b1e35;
+  --navy2:   #0f2744;
+  --navy3:   #152f52;
+  --border:  rgba(59,139,255,0.18);
+  --card-bg: rgba(11,30,53,0.90);
+  --accent:  #3b8bff;
+  --accent2: #00d4b4;
+  --gold:    #f5b301;
+  --text:    #e8edf5;
+  --muted:   #7a93b4;
+  --radius:  13px;
+  --success: #22d36a;
+
+  /* Per-keyword colour tokens */
+  --kc-evv:        #00d4b4;
+  --kc-billing:    #3b8bff;
+  --kc-claims:     #c580ff;
+  --kc-auth:       #f5b301;
+  --kc-sched:      #ff9a3c;
+  --kc-client:     #22d36a;
+  --kc-staff:      #ff6b7a;
+  --kc-assign:     #ff7eb3;
+  --kc-comply:     #ffd166;
+  --kc-reporting:  #6aadff;
+  --kc-utilities:  #9baec8;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ---- BACKGROUND MESH ---- */
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 0%,  rgba(59,139,255,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at 92% 100%, rgba(0,212,180,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 35% at 50% 50%,  rgba(245,179,1,0.03) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+
+/* ================================================================
+   HEADER
+================================================================ */
+header {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(7,19,31,0.94);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 66px;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 20px;
+}
+
+.logo { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+
+/* Logo image — 550x107 source, rendered at proportional height for header */
+.logo-img {
+  height: 34px;           /* header is 66px; 34px keeps comfortable padding */
+  width: auto;            /* preserves 550:107 aspect → ~175px wide */
+  display: block;
+  /* Slight brightness boost so it reads well on dark bg without a white box */
+  filter: brightness(1.08) drop-shadow(0 1px 6px rgba(59,139,255,0.20));
+}
+
+/* Fallback text shown while image loads or if it fails */
+.logo-fallback {
+  font-size: 17px; font-weight: 700; letter-spacing: -.3px;
+  display: none; /* hidden once image resolves */
+}
+
+.logo-sub {
+  font-size: 10.5px; color: var(--muted); font-weight: 400;
+  letter-spacing: .6px; text-transform: uppercase; margin-top: 2px;
+}
+
+/* search */
+.search-wrap { position: relative; flex: 1; max-width: 400px; }
+
+.search-wrap::before {
+  content: '';
+  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
+  width: 14px; height: 14px;
+  background: var(--muted);
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m21 21-4.35-4.35'/%3E%3C/svg%3E");
+  mask-size: contain; mask-repeat: no-repeat;
+  pointer-events: none;
+}
+
+#search {
+  width: 100%;
+  background: rgba(255,255,255,0.055);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 14px 9px 36px;
+  color: var(--text);
+  font-family: 'Outfit', sans-serif; font-size: 14px;
+  transition: all .2s;
+}
+#search::placeholder { color: var(--muted); }
+#search:focus { outline: none; border-color: var(--accent); background: rgba(59,139,255,0.07); }
+
+.header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+.shortcut-hint {
+  font-family: 'Space Mono', monospace; font-size: 10px;
+  color: var(--muted); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 5px; padding: 3px 7px; letter-spacing: .3px;
+}
+
+.result-count {
+  font-family: 'Space Mono', monospace; font-size: 11px;
+  color: var(--muted); white-space: nowrap;
+}
+
+/* ================================================================
+   CONTENT WRAPPER
+================================================================ */
+.content { position: relative; z-index: 1; max-width: 1440px; margin: 0 auto; padding: 28px 32px 60px; }
+
+/* ================================================================
+   KEYWORD FILTER BAR
+================================================================ */
+.filter-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.2px; color: var(--muted); margin-bottom: 10px;
+}
+
+.filter-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 32px; }
+
+.kw-pill {
+  display: flex; align-items: center; gap: 6px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.045);
+  color: var(--muted);
+  font-family: 'Outfit', sans-serif; font-size: 12px; font-weight: 600;
+  padding: 6px 13px; border-radius: 99px; cursor: pointer;
+  transition: all .18s; white-space: nowrap; user-select: none;
+}
+.kw-pill:hover { border-color: rgba(59,139,255,0.35); color: var(--text); }
+.kw-pill.active { color: #fff; border-color: transparent; box-shadow: 0 2px 10px rgba(0,0,0,0.25); }
+
+/* dot inside active pill */
+.kw-pill .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: currentColor; opacity: .7; flex-shrink: 0;
+  display: none;
+}
+.kw-pill.active .dot { display: block; }
+
+/* All pill stays blue */
+.kw-pill[data-kw="All"].active { background: var(--accent); }
+
+/* ================================================================
+   RECENT STRIP
+================================================================ */
+#recentSection { margin-bottom: 32px; }
+
+.recent-strip {
+  display: flex; gap: 8px; flex-wrap: wrap;
+}
+
+.recent-chip {
+  display: inline-flex; align-items: center; gap: 7px;
+  background: rgba(255,255,255,0.04); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 13px;
+  font-size: 12.5px; font-weight: 500; color: var(--muted);
+  cursor: pointer; transition: all .18s; text-decoration: none;
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.recent-chip:hover { border-color: rgba(59,139,255,0.35); color: var(--text); background: rgba(59,139,255,0.07); }
+.recent-chip-icon { font-size: 13px; flex-shrink: 0; }
+
+/* ================================================================
+   SECTION HEADERS
+================================================================ */
+.section-block { margin-bottom: 10px; }
+.section-block:first-child .section-header { margin-top: 0; }
+
+.section-header {
+  display: flex; align-items: center; gap: 12px;
+  margin: 38px 0 16px;
+}
+
+.section-icon {
+  font-size: 16px; flex-shrink: 0;
+  width: 30px; height: 30px;
+  background: rgba(59,139,255,0.1);
+  border: 1px solid rgba(59,139,255,0.2);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.section-title {
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted);
+  white-space: nowrap;
+}
+
+.section-line { flex: 1; height: 1px; background: var(--border); }
+
+.section-count {
+  font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700;
+  padding: 3px 8px; border-radius: 99px;
+  background: rgba(59,139,255,0.11); color: var(--accent);
+  border: 1px solid rgba(59,139,255,0.22); letter-spacing: .4px;
+}
+
+/* ================================================================
+   CARD GRID
+================================================================ */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+/* ================================================================
+   NAV CARD
+================================================================ */
+.nav-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  backdrop-filter: blur(12px);
+  cursor: pointer; position: relative; overflow: hidden;
+  transition: transform .18s, box-shadow .18s, border-color .18s;
+  animation: fadeUp .3s both;
+  text-decoration: none; color: inherit;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.nav-card::after {
+  content: "\2197"; /* NE arrow — CSS unicode escape, safe */
+  position: absolute; top: 14px; right: 14px;
+  font-size: 14px; color: var(--accent);
+  opacity: 0; transform: translate(3px, -3px);
+  transition: opacity .15s, transform .15s;
+  pointer-events: none;
+}
+.nav-card:hover::after { opacity: .65; transform: translate(0,0); }
+
+.nav-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59,139,255,0.32);
+  box-shadow: 0 10px 36px rgba(0,0,0,0.32), 0 0 0 1px rgba(59,139,255,0.09);
+}
+
+/* card header row */
+.card-head { display: flex; align-items: flex-start; gap: 11px; }
+
+.card-icon {
+  width: 34px; height: 34px; border-radius: 9px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  background: rgba(59,139,255,0.09); border: 1px solid rgba(59,139,255,0.18);
+}
+
+.card-name {
+  font-size: 14px; font-weight: 700; line-height: 1.3;
+  padding-right: 22px; /* avoid overlap with NE arrow */
+}
+
+/* help text */
+.card-help {
+  font-size: 12.5px; color: #8fafc8; line-height: 1.55;
+}
+
+/* keyword chip row */
+.card-kws { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+
+/* ================================================================
+   KEYWORD CHIP (on cards)
+================================================================ */
+.kw-tag {
+  font-size: 9.5px; font-weight: 700; letter-spacing: .4px;
+  text-transform: uppercase;
+  padding: 3px 8px; border-radius: 5px;
+  cursor: pointer; transition: opacity .15s;
+  user-select: none;
+}
+.kw-tag:hover { opacity: .75; }
+
+/* Keyword colour assignments */
+.kw-evv          { background: rgba(0,212,180,0.14);   color: var(--kc-evv);       border: 1px solid rgba(0,212,180,0.25); }
+.kw-billing      { background: rgba(59,139,255,0.14);  color: var(--kc-billing);   border: 1px solid rgba(59,139,255,0.25); }
+.kw-claims       { background: rgba(197,128,255,0.14); color: var(--kc-claims);    border: 1px solid rgba(197,128,255,0.25); }
+.kw-authorizations { background: rgba(245,179,1,0.14); color: var(--kc-auth);      border: 1px solid rgba(245,179,1,0.25); }
+.kw-scheduling   { background: rgba(255,154,60,0.14);  color: var(--kc-sched);     border: 1px solid rgba(255,154,60,0.25); }
+.kw-clientadmissions { background: rgba(34,211,106,0.14); color: var(--kc-client); border: 1px solid rgba(34,211,106,0.25); }
+.kw-staff        { background: rgba(255,107,122,0.14); color: var(--kc-staff);     border: 1px solid rgba(255,107,122,0.25); }
+.kw-assignments  { background: rgba(255,126,179,0.14); color: var(--kc-assign);    border: 1px solid rgba(255,126,179,0.25); }
+.kw-compliance   { background: rgba(255,209,102,0.14); color: var(--kc-comply);    border: 1px solid rgba(255,209,102,0.25); }
+.kw-reporting    { background: rgba(106,173,255,0.14); color: var(--kc-reporting); border: 1px solid rgba(106,173,255,0.25); }
+.kw-utilities    { background: rgba(155,174,200,0.14); color: var(--kc-utilities); border: 1px solid rgba(155,174,200,0.25); }
+
+/* ================================================================
+   EMPTY STATE
+================================================================ */
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center; padding: 52px 24px;
+  color: var(--muted);
+}
+.empty-icon { font-size: 36px; margin-bottom: 12px; }
+.empty-text { font-size: 15px; }
+
+/* ================================================================
+   SECTION HIDDEN WHEN EMPTY
+================================================================ */
+.section-block.hidden { display: none; }
+
+/* ================================================================
+   LEGEND TOOLTIP
+================================================================ */
+#legend {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--navy2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 18px;
+  font-size: 12px; color: var(--muted);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  backdrop-filter: blur(12px);
+  display: none; z-index: 200;
+  max-width: 280px;
+}
+#legend.visible { display: block; }
+#legend h4 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; color: var(--text); }
+.legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-size: 11.5px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+#legendBtn {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--navy2); border: 1px solid var(--border);
+  color: var(--muted); font-family: 'Outfit', sans-serif;
+  font-size: 12px; font-weight: 600;
+  padding: 8px 14px; border-radius: 8px; cursor: pointer;
+  transition: all .18s; z-index: 199;
+}
+#legendBtn:hover { border-color: rgba(59,139,255,0.4); color: var(--text); }
+
+/* ================================================================
+   RESPONSIVE
+================================================================ */
+@media (max-width: 860px) {
+  .content { padding: 20px 16px 48px; }
+  header { padding: 0 16px; }
+  .shortcut-hint { display: none; }
+}
+@media (max-width: 560px) {
+  .logo-sub { display: none; }
+  #search { font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ================================================================
+     HEADER
+================================================================ -->
+<header>
+  <div class="logo">
+    <!--
+      Google Drive direct-embed URL — converted from sharing link:
+      https://drive.google.com/file/d/1znbOYsYfsZVmADf-GiYLryNb1a_SqCr1/view
+      Native size: 550 x 107 px
+    -->
+    <img
+      src="https://drive.google.com/uc?export=view&id=1znbOYsYfsZVmADf-GiYLryNb1a_SqCr1"
+      alt="Therap Navigator"
+      class="logo-img"
+      onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+    <span class="logo-fallback">Therap Navigator</span>
+  </div>
+
+  <div class="search-wrap">
+    <input id="search" type="text" placeholder="Search by name, keyword, or description..." autocomplete="off" spellcheck="false">
+  </div>
+
+  <div class="header-right">
+    <span class="shortcut-hint">/ to search</span>
+    <span class="result-count" id="resultCount"></span>
+  </div>
+</header>
+
+<!-- ================================================================
+     MAIN
+================================================================ -->
+<div class="content">
+
+  <!-- Keyword filter pills -->
+  <div class="filter-label">Filter by keyword</div>
+  <div class="filter-bar" id="filterBar"></div>
+
+  <!-- Recently visited -->
+  <div id="recentSection" style="display:none;">
+    <div class="filter-label" style="margin-bottom:10px;">Recently visited</div>
+    <div class="recent-strip" id="recentStrip"></div>
+    <div style="height:28px;"></div>
+  </div>
+
+  <!-- Dynamic sections -->
+  <div id="sectionsContainer"></div>
+
+</div>
+
+<!-- Keyword legend button + panel -->
+<button id="legendBtn">? Keyword Guide</button>
+<div id="legend">
+  <h4>Keyword Guide</h4>
+  <div id="legendRows"></div>
+</div>
+
+<script>
+/* ================================================================
+   DATA
+================================================================ */
+var NAV_DATA = [
+  /* ---- Billing ---- */
+  { section:'Billing', name:'TO DO List',
+    link:'https://secure.therapservices.net/ma/home/t/todo',
+    help:'Resolve visit data in "invalid" or "rejected" status. Most commonly caused by address variance.',
+    keywords:['EVV','Billing','Compliance'] },
+
+  { section:'Billing', name:'EVV Billing Conversion',
+    link:'https://secure.therapservices.net/ma/billing/evvBillingSearch?claimType=1&descCodeListType=DESC_CODE_EVV',
+    help:'Converts visit data to billing records, from which claims can be generated.',
+    keywords:['EVV','Billing','Claims'] },
+
+  { section:'Billing', name:'Billing Data Search',
+    link:'https://secure.therapservices.net/ma/billing/billingRecordSearch?claimType=1',
+    help:'Search for previously-created billing records.',
+    keywords:['Billing','Claims'] },
+
+  { section:'Billing', name:'Claim Template Search',
+    link:'https://secure.therapservices.net/ma/billing/professionalClaimTemplateSearch',
+    help:'Search for Claim Templates; create new ones by copying an existing template for another client.',
+    keywords:['Billing','Claims','Client Admissions'] },
+
+  { section:'Billing', name:'Claim Transaction Search',
+    link:'https://secure.therapservices.net/ma/billing/transactionSearch',
+    help:'View claim records including creation and transmission timestamps.',
+    keywords:['Billing','Claims'] },
+
+  /* ---- Authorizations & Visits ---- */
+  { section:'Authorizations & Visits', name:'PA Search',
+    link:'https://secure.therapservices.net/ma/billing/sAuthSearch?claimType=1',
+    help:'Search for service authorizations (prior authorizations).',
+    keywords:['Authorizations','Billing'] },
+
+  { section:'Authorizations & Visits', name:'PA Upload',
+    link:'https://secure.therapservices.net/ma/billing/profSaExcel/upload',
+    help:'Upload authorization data from the aggregator Excel file.',
+    keywords:['Authorizations','Billing'] },
+
+  { section:'Authorizations & Visits', name:'Schedule View',
+    link:'https://secure.therapservices.net/ma/schedule/criteria/schedulerView/program',
+    help:'View and edit visit slots.',
+    keywords:['Scheduling','EVV'] },
+
+  /* ---- Client Setup ---- */
+  { section:'Client Setup', name:'EVV Demographic Import',
+    link:'https://secure.therapservices.net/ma/client/clientEvvExcel/upload',
+    help:'Add and update client member data using aggregator Excel files.',
+    keywords:['EVV','Client Admissions'] },
+
+  { section:'Client Setup', name:'Client Demographics & Default Diagnoses',
+    link:'https://secure.therapservices.net/ma/client/individualSearch',
+    help:'View individual demographics and set default diagnoses (required for all clients).',
+    keywords:['Client Admissions','Compliance'] },
+
+  { section:'Client Setup', name:'Client Scheduling Settings',
+    link:'https://secure.therapservices.net/ma/schedule/scheduleClient',
+    help:'Make clients "schedulable" \u2014 required for all clients.',
+    keywords:['Client Admissions','Scheduling'] },
+
+  { section:'Client Setup', name:'Program Enrollment',
+    link:'https://secure.therapservices.net/ma/client/individualEnrollmentList?allClients=true',
+    help:'Enroll clients in a program \u2014 required for all clients.',
+    keywords:['Client Admissions'] },
+
+  /* ---- Staff Setup ---- */
+  { section:'Staff Setup', name:'Create New User',
+    link:'https://secure.therapservices.net/ma/admin2/userForm',
+    help:'Set up new staff accounts; disable two-factor authentication during setup.',
+    keywords:['Staff'] },
+
+  { section:'Staff Setup', name:'Staff Scheduling Settings',
+    link:'https://secure.therapservices.net/ma/schedule/scheduleStaffList',
+    help:'Enable staff to schedule visits. Select "Schedulable" and "Enable Self Check-in"; add all applicable service codes.',
+    keywords:['Staff','Scheduling'] },
+
+  { section:'Staff Setup', name:'Manage & Create Caseloads',
+    link:'https://secure.therapservices.net/admin/privilege/caseload/caseloadList.xhtml',
+    help:'Create a caseload for each individual client. Assign caseloads using User Privileges.',
+    keywords:['Client Admissions','Staff','Assignments'] },
+
+  { section:'Staff Setup', name:'User Privileges',
+    link:'https://secure.therapservices.net/admin/privilege/user/userList.xhtml?listType=USER_PRIVILEGE',
+    help:'Set user "Super Role" to "Caregiver"; assign caseload(s) to user.',
+    keywords:['Staff','Assignments'] },
+
+  { section:'Staff Setup', name:'Change Password',
+    link:'https://secure.therapservices.net/admin/privilege/user/userList.xhtml?nextPageUrl=%2Fauth%2Fconfig%2Fpassword%2Fchange&listType=USER_PASSWORD_CHANGE',
+    help:'Reset staff account passwords.',
+    keywords:['Staff'] },
+
+  /* ---- Reporting & Tools ---- */
+  { section:'Reporting & Tools', name:'Slot Report',
+    link:'https://secure.therapservices.net/ma/flexibleReports/reportCriteria.do?reportId=19131',
+    help:'Run reports on visit slot data; used to generate Overage and EVV reports.',
+    keywords:['EVV','Reporting','Scheduling'] },
+
+  { section:'Reporting & Tools', name:'Unclaimed Billing Report',
+    link:'https://secure.therapservices.net/ma/billing/unclaimedBillingDataReportSearch?claimType=1',
+    help:'Report on visits not yet used to generate claims; useful for detecting errors in the claim generation process.',
+    keywords:['Billing','Reporting','Compliance'] },
+
+  { section:'Reporting & Tools', name:'EVV Correction Tracker',
+    link:'https://docs.google.com/spreadsheets/d/1nNItLGD74TiRztYHF65PYVareX99qieQFCNure9P9Ek/edit?gid=0#gid=0',
+    help:'Internal Google Sheet for recording and tracking EVV corrections.',
+    keywords:['EVV','Compliance','Reporting'] },
+
+  { section:'Reporting & Tools', name:'EVV Report Generator',
+    link:'https://pgspears.github.io/EVVReport/',
+    help:'Internal app for generating the weekly EVV billing report; also detects unbilled visits and missing claim templates.',
+    keywords:['EVV','Reporting','Billing'] },
+
+  { section:'Reporting & Tools', name:'EVV No-Billing Report',
+    link:'https://pgspears.github.io/EVV_No_Billing/',
+    help:'Internal app for detecting active clients with no recent billing activity. See in-app instructions.',
+    keywords:['EVV','Reporting','Billing'] },
+
+  { section:'Reporting & Tools', name:'EVV Billing Calculator',
+    link:'https://pgspears.github.io/EVVCalculator/',
+    help:'Calculates billable units and amounts based on start/end times and service type.',
+    keywords:['EVV','Billing','Utilities'] },
+
+  { section:'Reporting & Tools', name:'TIS Report Center',
+    link:'https://script.google.com/a/macros/therapeuticinterventionservices.com/s/AKfycbwPNqXXRQlFhQ8a-0uMv4V4gksTTLv6hkSNjCIuuljuiQ2lrIC4xCDtOHCbeIgBvKw4ww/exec',
+    help:'Internal app for running custom operational reports, including EVV Corrections.',
+    keywords:['Reporting','Compliance'] }
+];
+
+/* Keyword metadata: description + CSS class */
+var KEYWORD_META = {
+  'EVV':              { css:'kw-evv',              desc:'Electronic Visit Verification',       color:'#00d4b4' },
+  'Billing':          { css:'kw-billing',           desc:'Billing workflows & claim processing', color:'#3b8bff' },
+  'Claims':           { css:'kw-claims',            desc:'Claim creation, templates & search',   color:'#c580ff' },
+  'Authorizations':   { css:'kw-authorizations',    desc:'Prior Authorization workflows',        color:'#f5b301' },
+  'Scheduling':       { css:'kw-scheduling',        desc:'Schedule views & settings',            color:'#ff9a3c' },
+  'Client Admissions':{ css:'kw-clientadmissions',  desc:'Client onboarding & enrollment',       color:'#22d36a' },
+  'Staff':            { css:'kw-staff',             desc:'Staff onboarding & account management',color:'#ff6b7a' },
+  'Assignments':      { css:'kw-assignments',       desc:'Caseloads & user role assignment',     color:'#ff7eb3' },
+  'Compliance':       { css:'kw-compliance',        desc:'Regulatory & audit-relevant items',    color:'#ffd166' },
+  'Reporting':        { css:'kw-reporting',         desc:'Reports & data exports',               color:'#6aadff' },
+  'Utilities':        { css:'kw-utilities',         desc:'Standalone tools & calculators',       color:'#9baec8' }
+};
+
+/* Section icons (unicode escapes safe in JS strings) */
+var SECTION_ICONS = {
+  'Billing':               '\uD83D\uDCB3',  /* credit card */
+  'Authorizations & Visits': '\uD83D\uDCCB', /* clipboard */
+  'Client Setup':          '\uD83D\uDC64',  /* bust in silhouette */
+  'Staff Setup':           '\uD83D\uDC65',  /* busts */
+  'Reporting & Tools':     '\uD83D\uDCCA'   /* bar chart */
+};
+
+/* ================================================================
+   STATE
+================================================================ */
+var activeKeyword  = 'All';
+var searchQuery    = '';
+var recentVisits   = [];
+
+try { recentVisits = JSON.parse(localStorage.getItem('therap_recent') || '[]'); } catch(e) {}
+
+/* ================================================================
+   BOOT
+================================================================ */
+document.addEventListener('DOMContentLoaded', function() {
+  buildFilterBar();
+  buildLegend();
+  buildRecentStrip();
+  render();
+
+  /* Search input */
+  document.getElementById('search').addEventListener('input', function() {
+    searchQuery = this.value.toLowerCase().trim();
+    render();
+  });
+
+  /* / shortcut to focus search */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === '/' && document.activeElement !== document.getElementById('search')) {
+      e.preventDefault();
+      document.getElementById('search').focus();
+    }
+    if (e.key === 'Escape') {
+      document.getElementById('search').value = '';
+      searchQuery = '';
+      render();
+      document.getElementById('search').blur();
+    }
+  });
+
+  /* Legend toggle */
+  document.getElementById('legendBtn').addEventListener('click', function() {
+    document.getElementById('legend').classList.toggle('visible');
+    document.getElementById('legendBtn').style.display =
+      document.getElementById('legend').classList.contains('visible') ? 'none' : '';
+  });
+  document.getElementById('legend').addEventListener('click', function(e) {
+    if (e.target === this) {
+      this.classList.remove('visible');
+      document.getElementById('legendBtn').style.display = '';
+    }
+  });
+});
+
+/* ================================================================
+   FILTER BAR
+================================================================ */
+function buildFilterBar() {
+  var bar = document.getElementById('filterBar');
+  bar.innerHTML = '';
+
+  /* Collect all unique keywords in data order */
+  var seen = {};
+  var ordered = [];
+  NAV_DATA.forEach(function(item) {
+    item.keywords.forEach(function(kw) {
+      if (!seen[kw]) { seen[kw] = true; ordered.push(kw); }
+    });
+  });
+
+  /* Prepend "All" */
+  var pills = ['All'].concat(ordered);
+
+  pills.forEach(function(kw) {
+    var btn = document.createElement('button');
+    btn.className = 'kw-pill' + (kw === activeKeyword ? ' active' : '');
+    btn.dataset.kw = kw;
+
+    /* colour active pill with keyword colour */
+    if (kw !== 'All') {
+      var meta = KEYWORD_META[kw];
+      if (meta && btn.classList.contains('active')) {
+        applyPillColor(btn, meta.color);
+      }
+    }
+
+    var dot = document.createElement('span');
+    dot.className = 'dot';
+    btn.appendChild(dot);
+    btn.appendChild(document.createTextNode(kw));
+
+    btn.addEventListener('click', function() {
+      activeKeyword = kw;
+      /* update all pills */
+      document.querySelectorAll('.kw-pill').forEach(function(p) {
+        p.classList.remove('active');
+        if (p.dataset.kw !== 'All') {
+          p.style.background = '';
+          p.style.borderColor = '';
+          p.style.color = '';
+        }
+      });
+      btn.classList.add('active');
+      if (kw !== 'All' && meta) {
+        applyPillColor(btn, meta.color);
+      }
+      render();
+    });
+
+    bar.appendChild(btn);
+  });
+}
+
+function applyPillColor(btn, hex) {
+  btn.style.background = hexToRgba(hex, 0.18);
+  btn.style.borderColor = hexToRgba(hex, 0.40);
+  btn.style.color = hex;
+}
+
+function hexToRgba(hex, alpha) {
+  var r = parseInt(hex.slice(1,3),16);
+  var g = parseInt(hex.slice(3,5),16);
+  var b = parseInt(hex.slice(5,7),16);
+  return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+}
+
+/* ================================================================
+   KEYWORD LEGEND
+================================================================ */
+function buildLegend() {
+  var container = document.getElementById('legendRows');
+  Object.keys(KEYWORD_META).forEach(function(kw) {
+    var meta = KEYWORD_META[kw];
+    var row = document.createElement('div');
+    row.className = 'legend-row';
+
+    var dot = document.createElement('span');
+    dot.className = 'legend-dot';
+    dot.style.background = meta.color;
+
+    var label = document.createElement('span');
+    label.innerHTML = '<strong style="color:#e8edf5">' + kw + '</strong> &mdash; ' + meta.desc;
+
+    row.appendChild(dot);
+    row.appendChild(label);
+    container.appendChild(row);
+  });
+}
+
+/* ================================================================
+   RECENT STRIP
+================================================================ */
+function buildRecentStrip() {
+  if (!recentVisits.length) return;
+  var sec = document.getElementById('recentSection');
+  var strip = document.getElementById('recentStrip');
+  sec.style.display = '';
+  strip.innerHTML = '';
+
+  recentVisits.slice(0, 6).forEach(function(visit) {
+    var chip = document.createElement('a');
+    chip.className = 'recent-chip';
+    chip.href = visit.link;
+    chip.target = '_blank';
+    chip.rel = 'noopener noreferrer';
+    chip.title = visit.link;
+
+    var icon = document.createElement('span');
+    icon.className = 'recent-chip-icon';
+    icon.textContent = '\u231B'; /* hourglass */
+
+    var txt = document.createElement('span');
+    txt.textContent = visit.name;
+
+    chip.appendChild(icon);
+    chip.appendChild(txt);
+    chip.addEventListener('click', function(e) {
+      e.stopPropagation();
+      recordVisit(visit.name, visit.link);
+    });
+    strip.appendChild(chip);
+  });
+}
+
+function recordVisit(name, link) {
+  /* De-dupe and keep most recent first */
+  recentVisits = recentVisits.filter(function(v) { return v.link !== link; });
+  recentVisits.unshift({ name: name, link: link });
+  if (recentVisits.length > 8) recentVisits = recentVisits.slice(0, 8);
+  try { localStorage.setItem('therap_recent', JSON.stringify(recentVisits)); } catch(e) {}
+  buildRecentStrip();
+}
+
+/* ================================================================
+   KEYWORD CSS CLASS LOOKUP
+================================================================ */
+function kwCssClass(kw) {
+  var meta = KEYWORD_META[kw];
+  return meta ? meta.css : 'kw-utilities';
+}
+
+/* ================================================================
+   RENDER
+================================================================ */
+function render() {
+  var container = document.getElementById('sectionsContainer');
+  container.innerHTML = '';
+
+  /* Filter */
+  var filtered = NAV_DATA.filter(function(item) {
+    var q = searchQuery;
+    if (activeKeyword !== 'All' && item.keywords.indexOf(activeKeyword) === -1) return false;
+    if (q) {
+      var haystack = item.name.toLowerCase() + ' ' +
+                     item.help.toLowerCase() + ' ' +
+                     item.keywords.join(' ').toLowerCase();
+      if (haystack.indexOf(q) === -1) return false;
+    }
+    return true;
+  });
+
+  /* Update result count */
+  var cnt = document.getElementById('resultCount');
+  if (searchQuery || activeKeyword !== 'All') {
+    cnt.textContent = filtered.length + ' result' + (filtered.length !== 1 ? 's' : '');
+  } else {
+    cnt.textContent = '';
+  }
+
+  /* Group by section (preserve original section order) */
+  var sectionOrder = [];
+  var buckets = {};
+  NAV_DATA.forEach(function(item) {
+    if (!buckets[item.section]) { buckets[item.section] = []; sectionOrder.push(item.section); }
+  });
+  filtered.forEach(function(item) {
+    if (!buckets[item.section]) buckets[item.section] = [];
+    /* avoid double-push on initial pass */
+  });
+  /* rebuild buckets with only filtered items */
+  var filteredBuckets = {};
+  filtered.forEach(function(item) {
+    if (!filteredBuckets[item.section]) filteredBuckets[item.section] = [];
+    filteredBuckets[item.section].push(item);
+  });
+
+  /* Global empty state */
+  if (filtered.length === 0) {
+    var emptyEl = document.createElement('div');
+    emptyEl.className = 'grid';
+    var inner = document.createElement('div');
+    inner.className = 'empty-state';
+    inner.innerHTML = '<div class="empty-icon">\uD83D\uDD0D</div>' +
+      '<div class="empty-text">No items match' + (searchQuery ? ' "' + escHtml(searchQuery) + '"' : ' your filter') + '.</div>';
+    emptyEl.appendChild(inner);
+    container.appendChild(emptyEl);
+    return;
+  }
+
+  var cardIdx = 0;
+
+  sectionOrder.forEach(function(section) {
+    var items = filteredBuckets[section];
+    if (!items || items.length === 0) return; /* skip empty sections */
+
+    /* Section header */
+    var secBlock = document.createElement('div');
+    secBlock.className = 'section-block';
+
+    var hdr = document.createElement('div');
+    hdr.className = 'section-header';
+
+    var iconEl = document.createElement('div');
+    iconEl.className = 'section-icon';
+    iconEl.textContent = SECTION_ICONS[section] || '\uD83D\uDCC2';
+
+    var titleEl = document.createElement('span');
+    titleEl.className = 'section-title';
+    titleEl.textContent = section;
+
+    var lineEl = document.createElement('div');
+    lineEl.className = 'section-line';
+
+    var countEl = document.createElement('span');
+    countEl.className = 'section-count';
+    countEl.textContent = items.length;
+
+    hdr.appendChild(iconEl);
+    hdr.appendChild(titleEl);
+    hdr.appendChild(lineEl);
+    hdr.appendChild(countEl);
+    secBlock.appendChild(hdr);
+
+    /* Card grid */
+    var grid = document.createElement('div');
+    grid.className = 'grid';
+
+    items.forEach(function(item) {
+      var card = document.createElement('a');
+      card.className = 'nav-card';
+      card.href = item.link;
+      card.target = '_blank';
+      card.rel = 'noopener noreferrer';
+      card.style.animationDelay = (cardIdx++ * 0.03) + 's';
+
+      card.addEventListener('click', function() {
+        recordVisit(item.name, item.link);
+      });
+
+      /* Card head: icon + name */
+      var head = document.createElement('div');
+      head.className = 'card-head';
+
+      var iconDiv = document.createElement('div');
+      iconDiv.className = 'card-icon';
+      iconDiv.textContent = SECTION_ICONS[item.section] || '\uD83D\uDCC2';
+
+      var nameDiv = document.createElement('div');
+      nameDiv.className = 'card-name';
+      nameDiv.textContent = item.name;
+
+      head.appendChild(iconDiv);
+      head.appendChild(nameDiv);
+      card.appendChild(head);
+
+      /* Help text */
+      var helpDiv = document.createElement('div');
+      helpDiv.className = 'card-help';
+      helpDiv.textContent = item.help;
+      card.appendChild(helpDiv);
+
+      /* Keyword chips */
+      var kwRow = document.createElement('div');
+      kwRow.className = 'card-kws';
+
+      item.keywords.forEach(function(kw) {
+        var tag = document.createElement('span');
+        tag.className = 'kw-tag ' + kwCssClass(kw);
+        tag.textContent = kw;
+        tag.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          /* Set filter to this keyword */
+          activeKeyword = kw;
+          /* Update pill bar */
+          document.querySelectorAll('.kw-pill').forEach(function(p) {
+            p.classList.remove('active');
+            if (p.dataset.kw !== 'All') {
+              p.style.background = ''; p.style.borderColor = ''; p.style.color = '';
+            }
+          });
+          var targetPill = document.querySelector('.kw-pill[data-kw="' + kw + '"]');
+          if (targetPill) {
+            targetPill.classList.add('active');
+            var meta = KEYWORD_META[kw];
+            if (meta) applyPillColor(targetPill, meta.color);
+          }
+          /* scroll to top of filter bar */
+          document.getElementById('filterBar').scrollIntoView({ behavior:'smooth', block:'nearest' });
+          render();
+        });
+        kwRow.appendChild(tag);
+      });
+
+      card.appendChild(kwRow);
+      grid.appendChild(card);
+    });
+
+    secBlock.appendChild(grid);
+    container.appendChild(secBlock);
+  });
+}
+
+/* ================================================================
+   UTIL
+================================================================ */
+function escHtml(str) {
+  return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
